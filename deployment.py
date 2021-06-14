@@ -1,14 +1,12 @@
+import json
 import os
 from datetime import datetime, timedelta
 
 from azure.identity import AzureCliCredential
 from azure.mgmt.resource import ResourceManagementClient
+from azure.mgmt.resource.resources.models import DeploymentProperties, Deployment
 from azure.mgmt.storage import StorageManagementClient
-from azure.storage.blob import generate_account_sas, ResourceTypes, AccountSasPermissions, PublicAccess, \
-    BlobServiceClient, AccessPolicy, ContainerSasPermissions
-import json
-from azure.mgmt.resource.resources.models import DeploymentProperties
-from azure.mgmt.resource.resources.models import Deployment
+from azure.storage.blob import PublicAccess, BlobServiceClient, AccessPolicy, ContainerSasPermissions
 
 credential = AzureCliCredential()
 subscription_id = "a6864bfe-c3fd-4771-a921-616ed4c2cb0a"
@@ -23,7 +21,6 @@ def provision_resource_group(resource_group_name, region):
             "location": f"{region}"
         }
     )
-
     print(f"Provisioned resource group {rg_result.name} in the {rg_result.location} region")
 
 
@@ -32,20 +29,20 @@ def create_storage_account(resource_group_name, region):
     availability_result = storage_client.storage_accounts.check_name_availability(
         {"name": storage_account_name}
     )
-
     if not availability_result.name_available:
         print(availability_result.message)
         print(f"Storage name {storage_account_name} is already in use. Try another name.")
         exit()
 
     # The name is available, so provision the account
-    poller = storage_client.storage_accounts.begin_create(resource_group_name, storage_account_name,
-                                                          {
-                                                              "location": f"{region}",
-                                                              "kind": "StorageV2",
-                                                              "sku": {"name": "Standard_LRS"}
-                                                          }
-                                                          )
+    poller = storage_client.storage_accounts.begin_create(
+        resource_group_name, storage_account_name,
+        {
+            "location": f"{region}",
+            "kind": "StorageV2",
+            "sku": {"name": "Standard_LRS"}
+        }
+    )
 
     # Long-running operations return a poller object; calling poller.result()
     # waits for completion.
@@ -56,20 +53,16 @@ def create_storage_account(resource_group_name, region):
 def create_blob(resource_group_name):
     storage_account_name = f"{resource_group_name}storage"
     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
-
     print(f"Primary key for storage account: {keys.keys[0].value}")
-
-    conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName={storage_account_name};AccountKey={keys.keys[0].value}"
-
+    conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
+                  f"{storage_account_name};AccountKey={keys.keys[0].value}"
     print(f"Connection string: {conn_string}")
-
     # Step 4: Provision the blob container in the account (this call is synchronous)
     blob_name = f"{storage_account_name}blob"
     container = storage_client.blob_containers.create(resource_group_name, storage_account_name, blob_name, {})
 
     # The fourth argument is a required BlobContainer object, but because we don't need any
     # special values there, so we just pass empty JSON.
-
     print(f"Provisioned blob container {container.name}")
 
 
@@ -84,14 +77,12 @@ def upload(resource_group_name, product, dest):
 def upload_file(resource_group_name, source, dest):
     storage_account_name = f"{resource_group_name}storage"
     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
-    conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName={storage_account_name};AccountKey={keys.keys[0].value}"
+    conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
+                  f"{storage_account_name};AccountKey={keys.keys[0].value}"
 
     blob_service_client = BlobServiceClient.from_connection_string(conn_string)
-
     blob_name = f"{storage_account_name}blob"
-
     client = blob_service_client.get_container_client(blob_name)
-
     print(f'Uploading {source} to {dest}')
     with open(source, 'rb') as data:
         client.upload_blob(name=dest, data=data)
@@ -112,7 +103,8 @@ def upload_dir(resource_group_name, source, dest):
 def get_and_set_container_access_policy(resource_group_name):
     storage_account_name = f"{resource_group_name}storage"
     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
-    conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName={storage_account_name};AccountKey={keys.keys[0].value}"
+    conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
+                  f"{storage_account_name};AccountKey={keys.keys[0].value}"
     service_client = BlobServiceClient.from_connection_string(conn_string)
     container_client = service_client.get_container_client(f"{storage_account_name}blob")
 

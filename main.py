@@ -3,11 +3,7 @@
 # https://github.com/Azure-Samples/resource-manager-python-template-deployment
 # https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python#upload-blobs-to-a-container
 
-from deployment import provision_resource_group
-from deployment import create_storage_account
-from deployment import create_blob
-from deployment import upload
-from deployment import deploy
+from deployment import provision_resource_group, create_storage_account, create_blob, upload, deploy
 
 
 def create_stack(name, location):
