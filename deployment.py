@@ -63,12 +63,14 @@ def create_blob(resource_group_name):
     print(f"Provisioned blob container {container.name}")
 
 
-def upload(resource_group_name, product, dest):
-    source = f"???/{product}"
+def upload(resource_group_name, product, path, dest):
+    source = f"{path}/{product}"
     if os.path.isdir(source):
+        print(f"Uploading templates from this location: {source}")
         upload_dir(resource_group_name, source, dest)
     else:
-        upload_file(resource_group_name, source, dest)
+        print(f"Hold up! provided template location is not valid: {source}")
+        exit(1)
 
 
 def upload_file(resource_group_name, source, dest):
@@ -95,24 +97,6 @@ def upload_dir(resource_group_name, source, dest):
             file_path = os.path.join(root, name)
             blob_path = prefix + dir_part + name
             upload_file(resource_group_name, file_path, blob_path)
-
-
-# def auth_shared_access_signature(resource_group_name):
-#     storage_account_name = f"{resource_group_name}storage"
-#     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
-#     conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
-#                   f"{storage_account_name};AccountKey={keys.keys[0].value}"
-#     blob_service_client = BlobServiceClient.from_connection_string(conn_string)
-#
-#     # Create a SAS token to use to authenticate a new client
-#     sas_token = generate_account_sas(
-#         blob_service_client.account_name,
-#         account_key=blob_service_client.credential.account_key,
-#         resource_types=ResourceTypes(object=True),
-#         permission=AccountSasPermissions(read=True),
-#         expiry=datetime.utcnow() + timedelta(hours=1)
-#     )
-#     return sas_token
 
 
 def get_and_set_container_access_policy(resource_group_name):
@@ -152,7 +136,7 @@ def deploy(resource_group_name, product, region):
         'sshKey': ssh_key,
         'sshUserName': f"{product}admin",
         'location': region,
-        'dbPassword': ".Jkv435jxaDKL2345KA7YpbLyWJLPmocWx43rcn69",
+        'dbPassword': "???",
         'enableEmailAlerts': False,
         'enableApplicationInsights': False,
         'enableAnalytics': False
