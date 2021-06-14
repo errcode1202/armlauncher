@@ -8,7 +8,7 @@ from azure.storage.blob import PublicAccess, BlobServiceClient, AccessPolicy, Co
 from datetime import datetime, timedelta
 
 credential = AzureCliCredential()
-subscription_id = "a6864bfe-c3fd-4771-a921-616ed4c2cb0a"
+subscription_id = "???"
 storage_client = StorageManagementClient(credential, subscription_id)
 resource_client = ResourceManagementClient(credential, subscription_id)
 
@@ -64,7 +64,7 @@ def create_blob(resource_group_name):
 
 
 def upload(resource_group_name, product, dest):
-    source = f"/Users/drathbone/Git/azure/atlassian-azure-deployment/{product}"
+    source = f"???/{product}"
     if os.path.isdir(source):
         upload_dir(resource_group_name, source, dest)
     else:
@@ -137,7 +137,8 @@ def get_and_set_container_access_policy(resource_group_name):
     container_client.set_container_access_policy(signed_identifiers=identifiers, public_access=public_access)
 
 
-def deploy(resource_group_name, product):
+def deploy(resource_group_name, product, region):
+    ssh_key = get_public_ssh_key()
     get_and_set_container_access_policy(resource_group_name)
     storage_account_name = f"{resource_group_name}storage"
     blob_name = f"{storage_account_name}blob"
@@ -148,9 +149,9 @@ def deploy(resource_group_name, product):
     parameters = {
         f'{product}ClusterSize': "trial",
         '_artifactsLocation': url,
-        'sshKey': "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDHjWkyH4khcIlwwPLjEF7v+3IhUK7ucH3DFjcyyxJdTFyY4UKjB+At1aGkcq6t6VLlHCddY5d8++u8pc3Ky6pZhJhygfJ7n9rtHkJDV4EJGff+BKp3B1R58ryoD4kslWJLFQYQg1zQKK8xIDZfjrZt75AkNK4y/FmypCsPDNIYsr5qw2hnXNX/gZL/Zhr44gvNoj0aUJJSBOZ/LEslxnEr2YaqjBY3EmapO4K9YAFYZzgqXhh3awonv4vt5dHH2WO581+TKIf+UYNOxRq0H5gxkYA83PC/uhNp2keBxva0HXhGl5YXQjGqODlMy1Wj12DLhTXAM9JvZqUHaMafilIUU7qjgvsY4WUrFYvcNcye5N1WUjri60WSPDKrhsgTF0/qWm/1uICoirG0ajFAopuREtUzjQjaM/BdXzWuRywHB8Mh0jbXgaziFj4ojIGTCqyn+X7UalZs9bYsoE6BzVB1ZI1JDvN6aIdiJJyJrcTlO/PkWUtBa5F3NkBkoQuJ0pEszfG48aWrWDBpxN608dwOUdbHmJNKsRT3aZ83dfcHOKd3mshwb8E0hODTUDFHLaHxu7hOLJm2C13BL9+ishPIHx9bf/wP7RLK7RJ3SoKUJsP5e7l5v+jdoHM8sxbQYWpSnnGU8L1DtlpXlfTwy2ZF9xYdFlFyemVzwqG31f6plw== drathbone@atlassian.com",
+        'sshKey': ssh_key,
         'sshUserName': f"{product}admin",
-        'location': "northeurope",
+        'location': region,
         'dbPassword': ".Jkv435jxaDKL2345KA7YpbLyWJLPmocWx43rcn69",
         'enableEmailAlerts': False,
         'enableApplicationInsights': False,
@@ -172,3 +173,10 @@ def deploy(resource_group_name, product):
     )
     print(f"Provisioning {product} now... Please wait.")
     deployment_async_operation.wait()
+
+
+def get_public_ssh_key():
+    pub_ssh_key_path = os.path.expanduser("~/.ssh/id_rsa.pub")
+    with open(pub_ssh_key_path, 'r') as pub_ssh_file_fd:
+        ssh_key = pub_ssh_file_fd.read()
+    return ssh_key

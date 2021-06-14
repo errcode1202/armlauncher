@@ -12,7 +12,7 @@ def create_stack(name, location):
     create_storage_account(name, location)
     create_blob(name)
     upload(name, product, "")
-    deploy(name, product)
+    deploy(name, product, location)
 
 
 if __name__ == '__main__':
