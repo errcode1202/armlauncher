@@ -1,15 +1,16 @@
 import json
 import os
-from datetime import datetime, timedelta
 
 from azure.identity import AzureCliCredential
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.resources.models import DeploymentProperties, Deployment
 from azure.mgmt.storage import StorageManagementClient
-from azure.storage.blob import PublicAccess, BlobServiceClient, AccessPolicy, ContainerSasPermissions
+from azure.storage.blob import PublicAccess, BlobServiceClient, AccessPolicy, ContainerSasPermissions, ResourceTypes, \
+    AccountSasPermissions, generate_account_sas
+from datetime import datetime, timedelta
 
 credential = AzureCliCredential()
-subscription_id = "????"
+subscription_id = "???"
 storage_client = StorageManagementClient(credential, subscription_id)
 resource_client = ResourceManagementClient(credential, subscription_id)
 
@@ -53,10 +54,8 @@ def create_storage_account(resource_group_name, region):
 def create_blob(resource_group_name):
     storage_account_name = f"{resource_group_name}storage"
     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
-    print(f"Primary key for storage account: {keys.keys[0].value}")
     conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
                   f"{storage_account_name};AccountKey={keys.keys[0].value}"
-    print(f"Connection string: {conn_string}")
     # Step 4: Provision the blob container in the account (this call is synchronous)
     blob_name = f"{storage_account_name}blob"
     container = storage_client.blob_containers.create(resource_group_name, storage_account_name, blob_name, {})
@@ -67,7 +66,7 @@ def create_blob(resource_group_name):
 
 
 def upload(resource_group_name, product, dest):
-    source = f"/Users/drathbone/Git/azure/atlassian-azure-deployment/{product}"
+    source = f"???/{product}"
     if os.path.isdir(source):
         upload_dir(resource_group_name, source, dest)
     else:
@@ -100,30 +99,26 @@ def upload_dir(resource_group_name, source, dest):
             upload_file(resource_group_name, file_path, blob_path)
 
 
-def get_and_set_container_access_policy(resource_group_name):
+def auth_shared_access_signature(resource_group_name):
     storage_account_name = f"{resource_group_name}storage"
     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
     conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
                   f"{storage_account_name};AccountKey={keys.keys[0].value}"
-    service_client = BlobServiceClient.from_connection_string(conn_string)
-    container_client = service_client.get_container_client(f"{storage_account_name}blob")
+    blob_service_client = BlobServiceClient.from_connection_string(conn_string)
 
-    # Create access policy
-    access_policy = AccessPolicy(permission=ContainerSasPermissions(read=True, write=True),
-                                 expiry=datetime.utcnow() + timedelta(hours=1),
-                                 start=datetime.utcnow() - timedelta(minutes=1))
-
-    identifiers = {'read': access_policy}
-
-    # Specifies full public read access for container and blob data.
-    public_access = PublicAccess.Container
-
-    # Set the access policy on the container
-    container_client.set_container_access_policy(signed_identifiers=identifiers, public_access=public_access)
+    # Create a SAS token to use to authenticate a new client
+    sas_token = generate_account_sas(
+        blob_service_client.account_name,
+        account_key=blob_service_client.credential.account_key,
+        resource_types=ResourceTypes(object=True),
+        permission=AccountSasPermissions(read=True),
+        expiry=datetime.utcnow() + timedelta(hours=1)
+    )
+    return sas_token
 
 
 def deploy(resource_group_name, product):
-    get_and_set_container_access_policy(resource_group_name)
+    sas_token = auth_shared_access_signature(resource_group_name)
     storage_account_name = f"{resource_group_name}storage"
     blob_name = f"{storage_account_name}blob"
     url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/nestedtemplates"
@@ -135,7 +130,8 @@ def deploy(resource_group_name, product):
     parameters = {
         'crowdClusterSize': "trial",
         '_artifactsLocation': url,
-        'sshKey': "????",
+        '_artifactsLocationSasToken': f"?{sas_token}",
+        'sshKey': "???",
         'sshUserName': "crowdadmin",
         'location': "northeurope",
         'dbPassword': "???",
