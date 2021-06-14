@@ -1,16 +1,14 @@
-import json
 import os
 
 from azure.identity import AzureCliCredential
 from azure.mgmt.resource import ResourceManagementClient
-from azure.mgmt.resource.resources.models import DeploymentProperties, Deployment
+from azure.mgmt.resource.resources.models import DeploymentProperties, Deployment, TemplateLink
 from azure.mgmt.storage import StorageManagementClient
-from azure.storage.blob import PublicAccess, BlobServiceClient, AccessPolicy, ContainerSasPermissions, ResourceTypes, \
-    AccountSasPermissions, generate_account_sas
+from azure.storage.blob import PublicAccess, BlobServiceClient, AccessPolicy, ContainerSasPermissions
 from datetime import datetime, timedelta
 
 credential = AzureCliCredential()
-subscription_id = "???"
+subscription_id = "a6864bfe-c3fd-4771-a921-616ed4c2cb0a"
 storage_client = StorageManagementClient(credential, subscription_id)
 resource_client = ResourceManagementClient(credential, subscription_id)
 
@@ -66,7 +64,7 @@ def create_blob(resource_group_name):
 
 
 def upload(resource_group_name, product, dest):
-    source = f"???/{product}"
+    source = f"/Users/drathbone/Git/azure/atlassian-azure-deployment/{product}"
     if os.path.isdir(source):
         upload_dir(resource_group_name, source, dest)
     else:
@@ -99,42 +97,61 @@ def upload_dir(resource_group_name, source, dest):
             upload_file(resource_group_name, file_path, blob_path)
 
 
-def auth_shared_access_signature(resource_group_name):
+# def auth_shared_access_signature(resource_group_name):
+#     storage_account_name = f"{resource_group_name}storage"
+#     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
+#     conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
+#                   f"{storage_account_name};AccountKey={keys.keys[0].value}"
+#     blob_service_client = BlobServiceClient.from_connection_string(conn_string)
+#
+#     # Create a SAS token to use to authenticate a new client
+#     sas_token = generate_account_sas(
+#         blob_service_client.account_name,
+#         account_key=blob_service_client.credential.account_key,
+#         resource_types=ResourceTypes(object=True),
+#         permission=AccountSasPermissions(read=True),
+#         expiry=datetime.utcnow() + timedelta(hours=1)
+#     )
+#     return sas_token
+
+
+def get_and_set_container_access_policy(resource_group_name):
     storage_account_name = f"{resource_group_name}storage"
     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
     conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
                   f"{storage_account_name};AccountKey={keys.keys[0].value}"
-    blob_service_client = BlobServiceClient.from_connection_string(conn_string)
+    service_client = BlobServiceClient.from_connection_string(conn_string)
+    container_client = service_client.get_container_client(f"{storage_account_name}blob")
 
-    # Create a SAS token to use to authenticate a new client
-    sas_token = generate_account_sas(
-        blob_service_client.account_name,
-        account_key=blob_service_client.credential.account_key,
-        resource_types=ResourceTypes(object=True),
-        permission=AccountSasPermissions(read=True),
-        expiry=datetime.utcnow() + timedelta(hours=1)
-    )
-    return sas_token
+    # Create access policy
+    access_policy = AccessPolicy(permission=ContainerSasPermissions(read=True, write=True),
+                                 expiry=datetime.utcnow() + timedelta(hours=1),
+                                 start=datetime.utcnow() - timedelta(minutes=1))
+
+    identifiers = {'read': access_policy}
+
+    # Specifies full public read access for container and blob data.
+    public_access = PublicAccess.Container
+
+    # Set the access policy on the container
+    container_client.set_container_access_policy(signed_identifiers=identifiers, public_access=public_access)
 
 
 def deploy(resource_group_name, product):
-    sas_token = auth_shared_access_signature(resource_group_name)
+    get_and_set_container_access_policy(resource_group_name)
     storage_account_name = f"{resource_group_name}storage"
     blob_name = f"{storage_account_name}blob"
+    template_url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/mainTemplate.json"
     url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/nestedtemplates"
-
-    template_path = "???/crowd/mainTemplate.json"
-    with open(template_path, 'r') as template_file_fd:
-        template = json.load(template_file_fd)
+    template_link = TemplateLink(uri=template_url)
 
     parameters = {
-        'crowdClusterSize': "trial",
+        f'{product}ClusterSize': "trial",
         '_artifactsLocation': url,
-        '_artifactsLocationSasToken': f"?{sas_token}",
-        'sshKey': "???",
-        'sshUserName': "crowdadmin",
+        'sshKey': "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDHjWkyH4khcIlwwPLjEF7v+3IhUK7ucH3DFjcyyxJdTFyY4UKjB+At1aGkcq6t6VLlHCddY5d8++u8pc3Ky6pZhJhygfJ7n9rtHkJDV4EJGff+BKp3B1R58ryoD4kslWJLFQYQg1zQKK8xIDZfjrZt75AkNK4y/FmypCsPDNIYsr5qw2hnXNX/gZL/Zhr44gvNoj0aUJJSBOZ/LEslxnEr2YaqjBY3EmapO4K9YAFYZzgqXhh3awonv4vt5dHH2WO581+TKIf+UYNOxRq0H5gxkYA83PC/uhNp2keBxva0HXhGl5YXQjGqODlMy1Wj12DLhTXAM9JvZqUHaMafilIUU7qjgvsY4WUrFYvcNcye5N1WUjri60WSPDKrhsgTF0/qWm/1uICoirG0ajFAopuREtUzjQjaM/BdXzWuRywHB8Mh0jbXgaziFj4ojIGTCqyn+X7UalZs9bYsoE6BzVB1ZI1JDvN6aIdiJJyJrcTlO/PkWUtBa5F3NkBkoQuJ0pEszfG48aWrWDBpxN608dwOUdbHmJNKsRT3aZ83dfcHOKd3mshwb8E0hODTUDFHLaHxu7hOLJm2C13BL9+ishPIHx9bf/wP7RLK7RJ3SoKUJsP5e7l5v+jdoHM8sxbQYWpSnnGU8L1DtlpXlfTwy2ZF9xYdFlFyemVzwqG31f6plw== drathbone@atlassian.com",
+        'sshUserName': f"{product}admin",
         'location': "northeurope",
-        'dbPassword': "???",
+        'dbPassword': ".Jkv435jxaDKL2345KA7YpbLyWJLPmocWx43rcn69",
         'enableEmailAlerts': False,
         'enableApplicationInsights': False,
         'enableAnalytics': False
@@ -143,15 +160,15 @@ def deploy(resource_group_name, product):
 
     properties = DeploymentProperties(
         mode="incremental",
-        template=template,
+        template_link=template_link,
         parameters=parameters
     )
 
     deploy_parameter = Deployment(properties=properties)
-
     deployment_async_operation = resource_client.deployments.begin_create_or_update(
         resource_group_name,
         f"{product}-deployment",
         deploy_parameter
     )
+    print(f"Provisioning {product} now... Please wait.")
     deployment_async_operation.wait()
