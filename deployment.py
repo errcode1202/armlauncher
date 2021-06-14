@@ -6,11 +6,17 @@ from azure.mgmt.resource.resources.models import DeploymentProperties, Deploymen
 from azure.mgmt.storage import StorageManagementClient
 from azure.storage.blob import PublicAccess, BlobServiceClient, AccessPolicy, ContainerSasPermissions
 from datetime import datetime, timedelta
+from parameters.Crowd import Crowd
+from parameters.Jira import Jira
+from parameters.Confluence import Confluence
+from parameters.Bitbucket import Bitbucket
+from haikunator import Haikunator
 
 credential = AzureCliCredential()
-subscription_id = "???"
-storage_client = StorageManagementClient(credential, subscription_id)
-resource_client = ResourceManagementClient(credential, subscription_id)
+azure_subscription_id = "a6864bfe-c3fd-4771-a921-616ed4c2cb0a"
+storage_client = StorageManagementClient(credential, azure_subscription_id)
+resource_client = ResourceManagementClient(credential, azure_subscription_id)
+name_generator = Haikunator.haikunate(token_length=0, delimiter='')
 
 
 def provision_resource_group(resource_group_name, region):
@@ -51,15 +57,8 @@ def create_storage_account(resource_group_name, region):
 
 def create_blob(resource_group_name):
     storage_account_name = f"{resource_group_name}storage"
-    keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
-    conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
-                  f"{storage_account_name};AccountKey={keys.keys[0].value}"
-    # Step 4: Provision the blob container in the account (this call is synchronous)
     blob_name = f"{storage_account_name}blob"
     container = storage_client.blob_containers.create(resource_group_name, storage_account_name, blob_name, {})
-
-    # The fourth argument is a required BlobContainer object, but because we don't need any
-    # special values there, so we just pass empty JSON.
     print(f"Provisioned blob container {container.name}")
 
 
@@ -122,7 +121,6 @@ def get_and_set_container_access_policy(resource_group_name):
 
 
 def deploy(resource_group_name, product, region):
-    ssh_key = get_public_ssh_key()
     get_and_set_container_access_policy(resource_group_name)
     storage_account_name = f"{resource_group_name}storage"
     blob_name = f"{storage_account_name}blob"
@@ -130,23 +128,10 @@ def deploy(resource_group_name, product, region):
     url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/nestedtemplates"
     template_link = TemplateLink(uri=template_url)
 
-    parameters = {
-        f'{product}ClusterSize': "trial",
-        '_artifactsLocation': url,
-        'sshKey': ssh_key,
-        'sshUserName': f"{product}admin",
-        'location': region,
-        'dbPassword': "???",
-        'enableEmailAlerts': False,
-        'enableApplicationInsights': False,
-        'enableAnalytics': False
-    }
-    parameters = {k: {'value': v} for k, v in parameters.items()}
-
     properties = DeploymentProperties(
         mode="incremental",
         template_link=template_link,
-        parameters=parameters
+        parameters=get_parameters(product, url, region)
     )
 
     deploy_parameter = Deployment(properties=properties)
@@ -164,3 +149,13 @@ def get_public_ssh_key():
     with open(pub_ssh_key_path, 'r') as pub_ssh_file_fd:
         ssh_key = pub_ssh_file_fd.read()
     return ssh_key
+
+
+def get_parameters(product, url, region):
+    parameters = {
+        'jira': Jira(product, url, region, get_public_ssh_key()).parameters(),
+        'crowd': Crowd(product, url, region, get_public_ssh_key()).parameters(),
+        'confluence': Confluence(product, url, region, get_public_ssh_key()).parameters(),
+        'bitbucket': Bitbucket(product, url, region, get_public_ssh_key()).parameters()
+    }
+    return parameters.get(product)
