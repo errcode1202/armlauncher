@@ -9,7 +9,7 @@ from azure.mgmt.storage import StorageManagementClient
 from azure.storage.blob import PublicAccess, BlobServiceClient, AccessPolicy, ContainerSasPermissions
 
 credential = AzureCliCredential()
-subscription_id = "a6864bfe-c3fd-4771-a921-616ed4c2cb0a"
+subscription_id = "????"
 storage_client = StorageManagementClient(credential, subscription_id)
 resource_client = ResourceManagementClient(credential, subscription_id)
 
@@ -128,17 +128,17 @@ def deploy(resource_group_name, product):
     blob_name = f"{storage_account_name}blob"
     url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/nestedtemplates"
 
-    template_path = "/Users/drathbone/Git/azure/atlassian-azure-deployment/crowd/mainTemplate.json"
+    template_path = "???/crowd/mainTemplate.json"
     with open(template_path, 'r') as template_file_fd:
         template = json.load(template_file_fd)
 
     parameters = {
         'crowdClusterSize': "trial",
         '_artifactsLocation': url,
-        'sshKey': "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDHjWkyH4khcIlwwPLjEF7v+3IhUK7ucH3DFjcyyxJdTFyY4UKjB+At1aGkcq6t6VLlHCddY5d8++u8pc3Ky6pZhJhygfJ7n9rtHkJDV4EJGff+BKp3B1R58ryoD4kslWJLFQYQg1zQKK8xIDZfjrZt75AkNK4y/FmypCsPDNIYsr5qw2hnXNX/gZL/Zhr44gvNoj0aUJJSBOZ/LEslxnEr2YaqjBY3EmapO4K9YAFYZzgqXhh3awonv4vt5dHH2WO581+TKIf+UYNOxRq0H5gxkYA83PC/uhNp2keBxva0HXhGl5YXQjGqODlMy1Wj12DLhTXAM9JvZqUHaMafilIUU7qjgvsY4WUrFYvcNcye5N1WUjri60WSPDKrhsgTF0/qWm/1uICoirG0ajFAopuREtUzjQjaM/BdXzWuRywHB8Mh0jbXgaziFj4ojIGTCqyn+X7UalZs9bYsoE6BzVB1ZI1JDvN6aIdiJJyJrcTlO/PkWUtBa5F3NkBkoQuJ0pEszfG48aWrWDBpxN608dwOUdbHmJNKsRT3aZ83dfcHOKd3mshwb8E0hODTUDFHLaHxu7hOLJm2C13BL9+ishPIHx9bf/wP7RLK7RJ3SoKUJsP5e7l5v+jdoHM8sxbQYWpSnnGU8L1DtlpXlfTwy2ZF9xYdFlFyemVzwqG31f6plw== drathbone@atlassian.com",
+        'sshKey': "????",
         'sshUserName': "crowdadmin",
         'location': "northeurope",
-        'dbPassword': ".Jkv435jxaDKL2345KA7YpbLyWJLPmocWx43rcn69",
+        'dbPassword': "???",
         'enableEmailAlerts': False,
         'enableApplicationInsights': False,
         'enableAnalytics': False
