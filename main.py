@@ -7,17 +7,16 @@
 from deployment import provision_resource_group, create_storage_account, create_blob, upload, deploy
 
 
-def create_stack(name, location):
-    provision_resource_group(name, location)
-    create_storage_account(name, location)
-    create_blob(name)
-    upload(name, product, "")
-    deploy(name, product, location)
+def create_stack():
+    provision_resource_group(resource_group_name, region)
+    create_storage_account(resource_group_name, region)
+    create_blob(resource_group_name)
+    upload(resource_group_name, product, "")
+    deploy(resource_group_name, product, region)
 
 
 if __name__ == '__main__':
-    # Capture details
     resource_group_name = input("Provide a name for the resource group: ")
     product = input("Product to deploy: ")
     region = input("Region to deploy to: ")
-    create_stack(resource_group_name, region)
+    create_stack()
