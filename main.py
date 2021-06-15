@@ -23,7 +23,7 @@ if __name__ == '__main__':
     while True:
         product = input("Product to deploy [jira|confluence|bitbucket|crowd]: ")
         if not re.match("jira|confluence|bitbucket|crowd", product):
-            print("Error! Make sure you only use letters in your name")
+            print("Error! Invalid Atlassian product supplied. Please try again.")
         else:
             break
     region = input("Region to deploy to: ")
