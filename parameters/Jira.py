@@ -18,6 +18,7 @@ class Jira:
             'sshUserName': f"{self.product}admin",
             'location': self.region,
             'dbPassword': ".Jkv435jxaDKL2345KA7YpbLyWJLPmocWx43rcn69",
+            'jiraAdminUserName': "jiraadmin",
             'jiraAdminUserPassword': ".Jkv435jxaDKL2345KA7YpbLyWJLPmocWx43rcn69",
             'enableAnalytics': False
         }

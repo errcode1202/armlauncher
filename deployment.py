@@ -10,13 +10,11 @@ from parameters.Crowd import Crowd
 from parameters.Jira import Jira
 from parameters.Confluence import Confluence
 from parameters.Bitbucket import Bitbucket
-from haikunator import Haikunator
 
 credential = AzureCliCredential()
 azure_subscription_id = "a6864bfe-c3fd-4771-a921-616ed4c2cb0a"
 storage_client = StorageManagementClient(credential, azure_subscription_id)
 resource_client = ResourceManagementClient(credential, azure_subscription_id)
-name_generator = Haikunator.haikunate(token_length=0, delimiter='')
 
 
 def provision_resource_group(resource_group_name, region):
@@ -142,6 +140,12 @@ def deploy(resource_group_name, product, region):
     )
     print(f"Provisioning {product} now... Please wait.")
     deployment_async_operation.wait()
+    print(f"{product} provisioning complete.")
+
+    var = resource_client.deployments.get(
+        resource_group_name,
+        f"{product}-deployment").properties.outputs
+    print(var)
 
 
 def get_public_ssh_key():

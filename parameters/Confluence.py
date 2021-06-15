@@ -18,6 +18,7 @@ class Confluence:
             'sshUserName': f"{self.product}admin",
             'location': self.region,
             'dbPassword': ".Jkv435jxaDKL2345KA7YpbLyWJLPmocWx43rcn69",
+            'confAdminUserName': "confadmin",
             'confAdminUserPassword': ".Jkv435jxaDKL2345KA7YpbLyWJLPmocWx43rcn69",
             'enableAnalytics': False
         }
