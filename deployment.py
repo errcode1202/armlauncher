@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 from azure.identity import AzureCliCredential
 from azure.mgmt.resource import ResourceManagementClient
@@ -10,6 +11,8 @@ from parameters.Crowd import Crowd
 from parameters.Jira import Jira
 from parameters.Confluence import Confluence
 from parameters.Bitbucket import Bitbucket
+from pathlib import Path
+
 
 credential = AzureCliCredential()
 azure_subscription_id = "a6864bfe-c3fd-4771-a921-616ed4c2cb0a"
@@ -60,8 +63,13 @@ def create_blob(resource_group_name):
     print(f"Provisioned blob container {container.name}")
 
 
-def upload(resource_group_name, product, path, dest):
-    source = f"{path}/{product}"
+def upload(resource_group_name, product, dest):
+    if product.__eq__("crowd"):
+        print(f"Creating ansible.zip for {product}")
+        os.chdir("..")
+        subprocess.call(['sh', './getPlayBooks.sh'])
+
+    source = f"{Path(__file__).resolve().parent.parent.parent}/{product}"
     if os.path.isdir(source):
         print(f"Uploading templates from this location: {source}")
         upload_dir(resource_group_name, source, dest)

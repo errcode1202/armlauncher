@@ -7,11 +7,11 @@
 from deployment import provision_resource_group, create_storage_account, create_blob, upload, deploy
 
 
-def create_stack(name, location, path):
+def create_stack(name, location):
     provision_resource_group(name, location)
     create_storage_account(name, location)
     create_blob(name)
-    upload(name, product, path, "")
+    upload(name, product, "")
     deploy(name, product, location)
 
 
@@ -20,5 +20,4 @@ if __name__ == '__main__':
     resource_group_name = input("Provide a name for the resource group: ")
     product = input("Product to deploy: ")
     region = input("Region to deploy to: ")
-    path = input("Fully qualified path to the root dir of product templates i.e. '../../atlassian-azure-deployment/': ")
-    create_stack(resource_group_name, region, path)
+    create_stack(resource_group_name, region)
