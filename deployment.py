@@ -1,17 +1,18 @@
 import os
 import subprocess
+from datetime import datetime, timedelta
+from pathlib import Path
 
 from azure.identity import AzureCliCredential
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.resource.resources.models import DeploymentProperties, Deployment, TemplateLink
 from azure.mgmt.storage import StorageManagementClient
 from azure.storage.blob import PublicAccess, BlobServiceClient, AccessPolicy, ContainerSasPermissions
-from datetime import datetime, timedelta
+
+from parameters.Bitbucket import Bitbucket
+from parameters.Confluence import Confluence
 from parameters.Crowd import Crowd
 from parameters.Jira import Jira
-from parameters.Confluence import Confluence
-from parameters.Bitbucket import Bitbucket
-from pathlib import Path
 
 global azure_subscription_id
 global resource_group_name

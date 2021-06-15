@@ -1,4 +1,5 @@
 import re
+
 from deployment import provision_resource_group, \
     create_storage_account, \
     create_blob, \
