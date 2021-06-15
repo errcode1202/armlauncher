@@ -1,4 +1,4 @@
-# Armlauncher
+# AtlasARM
 A Python based CLI tool for simplifying local deployments of [Atlassian Azure ARM templates](https://bitbucket.org/atlassian/atlassian-azure-deployment/src/master/).
 
 ## Prerequisties
