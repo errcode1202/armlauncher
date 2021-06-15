@@ -13,14 +13,45 @@ from parameters.Confluence import Confluence
 from parameters.Bitbucket import Bitbucket
 from pathlib import Path
 
+global azure_subscription_id
+global resource_group_name
+global region
+global product
+global storage_account_name
+global blob_name
+global storage_client
+global resource_client
 
-credential = AzureCliCredential()
-azure_subscription_id = "a6864bfe-c3fd-4771-a921-616ed4c2cb0a"
-storage_client = StorageManagementClient(credential, azure_subscription_id)
-resource_client = ResourceManagementClient(credential, azure_subscription_id)
+
+def setup(name, location, atlassian_product, sub_id):
+    global azure_subscription_id
+    azure_subscription_id = sub_id
+
+    global resource_group_name
+    resource_group_name = name
+
+    global region
+    region = location
+
+    global product
+    product = atlassian_product
+
+    global storage_account_name
+    storage_account_name = f"{resource_group_name}storage"
+
+    global blob_name
+    blob_name = f"{storage_account_name}blob"
+
+    credential = AzureCliCredential()
+
+    global storage_client
+    storage_client = StorageManagementClient(credential, azure_subscription_id)
+
+    global resource_client
+    resource_client = ResourceManagementClient(credential, azure_subscription_id)
 
 
-def provision_resource_group(resource_group_name, region):
+def provision_resource_group():
     rg_result = resource_client.resource_groups.create_or_update(
         f"{resource_group_name}",
         {
@@ -30,8 +61,7 @@ def provision_resource_group(resource_group_name, region):
     print(f"Provisioned resource group {rg_result.name} in the {rg_result.location} region")
 
 
-def create_storage_account(resource_group_name, region):
-    storage_account_name = f"{resource_group_name}storage"
+def create_storage_account():
     availability_result = storage_client.storage_accounts.check_name_availability(
         {"name": storage_account_name}
     )
@@ -56,14 +86,12 @@ def create_storage_account(resource_group_name, region):
     print(f"Provisioned storage account {account_result.name}")
 
 
-def create_blob(resource_group_name):
-    storage_account_name = f"{resource_group_name}storage"
-    blob_name = f"{storage_account_name}blob"
-    container = storage_client.blob_containers.create(resource_group_name, storage_account_name, blob_name, {})
-    print(f"Provisioned blob container {container.name}")
+def create_blob():
+    blob = storage_client.blob_containers.create(resource_group_name, storage_account_name, blob_name, {})
+    print(f"Provisioned blob container {blob.name}")
 
 
-def upload(resource_group_name, product, dest):
+def upload(dest):
     if product.__eq__("crowd"):
         print(f"Creating ansible.zip for {product}")
         os.chdir("..")
@@ -79,13 +107,11 @@ def upload(resource_group_name, product, dest):
 
 
 def upload_file(resource_group_name, source, dest):
-    storage_account_name = f"{resource_group_name}storage"
     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
     conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
                   f"{storage_account_name};AccountKey={keys.keys[0].value}"
 
     blob_service_client = BlobServiceClient.from_connection_string(conn_string)
-    blob_name = f"{storage_account_name}blob"
     client = blob_service_client.get_container_client(blob_name)
     print(f'Uploading {source} to {dest}')
     with open(source, 'rb') as data:
@@ -105,12 +131,11 @@ def upload_dir(resource_group_name, source, dest):
 
 
 def get_and_set_container_access_policy(resource_group_name):
-    storage_account_name = f"{resource_group_name}storage"
     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
     conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
                   f"{storage_account_name};AccountKey={keys.keys[0].value}"
     service_client = BlobServiceClient.from_connection_string(conn_string)
-    container_client = service_client.get_container_client(f"{storage_account_name}blob")
+    container_client = service_client.get_container_client(blob_name)
 
     # Create access policy
     access_policy = AccessPolicy(permission=ContainerSasPermissions(read=True, write=True),
@@ -126,10 +151,8 @@ def get_and_set_container_access_policy(resource_group_name):
     container_client.set_container_access_policy(signed_identifiers=identifiers, public_access=public_access)
 
 
-def deploy(resource_group_name, product, region):
+def deploy():
     get_and_set_container_access_policy(resource_group_name)
-    storage_account_name = f"{resource_group_name}storage"
-    blob_name = f"{storage_account_name}blob"
     template_url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/mainTemplate.json"
     url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/nestedtemplates"
     template_link = TemplateLink(uri=template_url)
