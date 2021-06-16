@@ -10,15 +10,15 @@ A Python based CLI tool for simplifying local deployments of [Atlassian Azure AR
 * `Azure CLI`
 
 ## Installation
-Login to you Azure account
+Login to you Azure account:
 ```
 az login
 ```
-Create virtual environment
+Create virtual environment:
 ```
 virtualenv armlaunchervenv
 ```
-Load virtual environment
+Load virtual environment:
 ```
 source armlaunchervenv/bin/activate
 ```
