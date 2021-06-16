@@ -164,10 +164,10 @@ def deploy_product():
     deployment_async_operation.wait()
     print(f"{product} provisioning complete.")
 
-    var = resource_client.deployments.get(
+    deployment_details = resource_client.deployments.get(
         resource_group_name,
         f"{product}-deployment").properties.outputs
-    print(var)
+    print(deployment_details)
 
 
 def get_public_ssh_key():
