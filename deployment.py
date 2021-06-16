@@ -91,7 +91,7 @@ def provision_storage_blob():
     print(f"Provisioned blob storage {blob.name}")
 
 
-def upload_assets(dest):
+def upload_assets():
     if product.__eq__("crowd"):
         print(f"Creating ansible.zip for {product}")
         os.chdir("..")
@@ -100,15 +100,14 @@ def upload_assets(dest):
     source = f"{Path(__file__).resolve().parent.parent.parent}/{product}"
     if os.path.isdir(source):
         print(f"Uploading templates from this location: {source}")
-        upload_dir(source, dest)
+        upload_dir(source)
     else:
         print(f"Hold up! provided template location is not valid: {source}")
         exit(1)
 
 
-def upload_dir(source, dest):
-    prefix = '' if dest == '' else dest + '/'
-    prefix += os.path.basename(source) + '/'
+def upload_dir(source):
+    prefix = os.path.basename(source) + '/'
     for root, dirs, files in os.walk(source):
         for name in files:
             dir_part = os.path.relpath(root, source)

@@ -15,7 +15,7 @@ def create_stack():
     provision_resource_group()
     provision_storage_account()
     provision_storage_blob()
-    upload_assets("")
+    upload_assets()
     deploy_product()
 
 
