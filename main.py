@@ -1,10 +1,10 @@
 import re
 
 from deployment import provision_resource_group, \
-    create_storage_account, \
-    create_blob, \
-    upload, \
-    deploy, \
+    provision_storage_account, \
+    provision_storage_blob, \
+    upload_assets, \
+    deploy_product, \
     setup
 
 global subscription_id, resource_group_name, product, region
@@ -13,10 +13,10 @@ global subscription_id, resource_group_name, product, region
 def create_stack():
     setup(resource_group_name, region, product, subscription_id)
     provision_resource_group()
-    create_storage_account()
-    create_blob()
-    upload("")
-    deploy()
+    provision_storage_account()
+    provision_storage_blob()
+    upload_assets("")
+    deploy_product()
 
 
 def gather_data():

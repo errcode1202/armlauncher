@@ -65,7 +65,7 @@ def provision_resource_group():
     print(f"Provisioned resource group {resource_group.name} in the {resource_group.location} region")
 
 
-def create_storage_account():
+def provision_storage_account():
     storage_account = storage_client.storage_accounts.check_name_availability({"name": storage_account_name})
     if not storage_account.name_available:
         print(storage_account.message)
@@ -86,12 +86,12 @@ def create_storage_account():
     print(f"Provisioned storage account {account_result.name}")
 
 
-def create_blob():
+def provision_storage_blob():
     blob = storage_client.blob_containers.create(resource_group_name, storage_account_name, blob_name, {})
-    print(f"Provisioned blob container {blob.name}")
+    print(f"Provisioned blob storage {blob.name}")
 
 
-def upload(dest):
+def upload_assets(dest):
     if product.__eq__("crowd"):
         print(f"Creating ansible.zip for {product}")
         os.chdir("..")
@@ -106,18 +106,6 @@ def upload(dest):
         exit(1)
 
 
-def upload_file(source, dest):
-    keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
-    conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
-                  f"{storage_account_name};AccountKey={keys.keys[0].value}"
-
-    blob_service_client = BlobServiceClient.from_connection_string(conn_string)
-    client = blob_service_client.get_container_client(blob_name)
-    print(f'Uploading {source} to {dest}')
-    with open(source, 'rb') as data:
-        client.upload_blob(name=dest, data=data)
-
-
 def upload_dir(source, dest):
     prefix = '' if dest == '' else dest + '/'
     prefix += os.path.basename(source) + '/'
@@ -128,6 +116,18 @@ def upload_dir(source, dest):
             file_path = os.path.join(root, name)
             blob_path = prefix + dir_part + name
             upload_file(file_path, blob_path)
+
+
+def upload_file(source, dest):
+    keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
+    conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
+                  f"{storage_account_name};AccountKey={keys.keys[0].value}"
+
+    blob_service_client = BlobServiceClient.from_connection_string(conn_string)
+    client = blob_service_client.get_container_client(blob_name)
+    print(f'Uploading {source} to {dest}')
+    with open(source, 'rb') as data:
+        client.upload_blob(name=dest, data=data)
 
 
 def get_and_set_container_access_policy():
@@ -146,7 +146,7 @@ def get_and_set_container_access_policy():
     container_client.set_container_access_policy(signed_identifiers=identifiers, public_access=public_access)
 
 
-def deploy():
+def deploy_product():
     get_and_set_container_access_policy()
     template_link = TemplateLink(uri=main_template_url)
     properties = DeploymentProperties(
