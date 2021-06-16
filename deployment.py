@@ -22,6 +22,8 @@ global storage_account_name
 global blob_name
 global storage_client
 global resource_client
+global main_template_url
+global nested_template_url
 
 
 def setup(name, location, atlassian_product, sub_id):
@@ -51,38 +53,35 @@ def setup(name, location, atlassian_product, sub_id):
     global resource_client
     resource_client = ResourceManagementClient(credential, azure_subscription_id)
 
+    global main_template_url
+    main_template_url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/mainTemplate.json"
+
+    global nested_template_url
+    nested_template_url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/nestedtemplates"
+
 
 def provision_resource_group():
-    rg_result = resource_client.resource_groups.create_or_update(
-        f"{resource_group_name}",
-        {
-            "location": f"{region}"
-        }
-    )
-    print(f"Provisioned resource group {rg_result.name} in the {rg_result.location} region")
+    resource_group = resource_client.resource_groups.create_or_update(resource_group_name, {"location": region})
+    print(f"Provisioned resource group {resource_group.name} in the {resource_group.location} region")
 
 
 def create_storage_account():
-    availability_result = storage_client.storage_accounts.check_name_availability(
-        {"name": storage_account_name}
-    )
-    if not availability_result.name_available:
-        print(availability_result.message)
+    storage_account = storage_client.storage_accounts.check_name_availability({"name": storage_account_name})
+    if not storage_account.name_available:
+        print(storage_account.message)
         print(f"Storage name {storage_account_name} is already in use. Try another name.")
         exit()
+    else:
+        poller = storage_client.storage_accounts.begin_create(
+            resource_group_name,
+            storage_account_name,
+            {
+                "location": region,
+                "kind": "StorageV2",
+                "sku": {"name": "Standard_LRS"}
+            }
+        )
 
-    # The name is available, so provision the account
-    poller = storage_client.storage_accounts.begin_create(
-        resource_group_name, storage_account_name,
-        {
-            "location": f"{region}",
-            "kind": "StorageV2",
-            "sku": {"name": "Standard_LRS"}
-        }
-    )
-
-    # Long-running operations return a poller object; calling poller.result()
-    # waits for completion.
     account_result = poller.result()
     print(f"Provisioned storage account {account_result.name}")
 
@@ -101,13 +100,13 @@ def upload(dest):
     source = f"{Path(__file__).resolve().parent.parent.parent}/{product}"
     if os.path.isdir(source):
         print(f"Uploading templates from this location: {source}")
-        upload_dir(resource_group_name, source, dest)
+        upload_dir(source, dest)
     else:
         print(f"Hold up! provided template location is not valid: {source}")
         exit(1)
 
 
-def upload_file(resource_group_name, source, dest):
+def upload_file(source, dest):
     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
     conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
                   f"{storage_account_name};AccountKey={keys.keys[0].value}"
@@ -119,7 +118,7 @@ def upload_file(resource_group_name, source, dest):
         client.upload_blob(name=dest, data=data)
 
 
-def upload_dir(resource_group_name, source, dest):
+def upload_dir(source, dest):
     prefix = '' if dest == '' else dest + '/'
     prefix += os.path.basename(source) + '/'
     for root, dirs, files in os.walk(source):
@@ -128,40 +127,32 @@ def upload_dir(resource_group_name, source, dest):
             dir_part = '' if dir_part == '.' else dir_part + '/'
             file_path = os.path.join(root, name)
             blob_path = prefix + dir_part + name
-            upload_file(resource_group_name, file_path, blob_path)
+            upload_file(file_path, blob_path)
 
 
-def get_and_set_container_access_policy(resource_group_name):
+def get_and_set_container_access_policy():
     keys = storage_client.storage_accounts.list_keys(resource_group_name, storage_account_name)
     conn_string = f"DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=" \
                   f"{storage_account_name};AccountKey={keys.keys[0].value}"
     service_client = BlobServiceClient.from_connection_string(conn_string)
     container_client = service_client.get_container_client(blob_name)
 
-    # Create access policy
     access_policy = AccessPolicy(permission=ContainerSasPermissions(read=True, write=True),
                                  expiry=datetime.utcnow() + timedelta(hours=1),
                                  start=datetime.utcnow() - timedelta(minutes=1))
 
     identifiers = {'read': access_policy}
-
-    # Specifies full public read access for container and blob data.
     public_access = PublicAccess.Container
-
-    # Set the access policy on the container
     container_client.set_container_access_policy(signed_identifiers=identifiers, public_access=public_access)
 
 
 def deploy():
-    get_and_set_container_access_policy(resource_group_name)
-    template_url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/mainTemplate.json"
-    url = f"https://{storage_account_name}.blob.core.windows.net/{blob_name}/{product}/nestedtemplates"
-    template_link = TemplateLink(uri=template_url)
-
+    get_and_set_container_access_policy()
+    template_link = TemplateLink(uri=main_template_url)
     properties = DeploymentProperties(
         mode="incremental",
         template_link=template_link,
-        parameters=get_parameters(product, url, region)
+        parameters=get_parameters()
     )
 
     deploy_parameter = Deployment(properties=properties)
@@ -187,11 +178,11 @@ def get_public_ssh_key():
     return ssh_key
 
 
-def get_parameters(product, url, region):
+def get_parameters():
     parameters = {
-        'jira': Jira(product, url, region, get_public_ssh_key()).parameters(),
-        'crowd': Crowd(product, url, region, get_public_ssh_key()).parameters(),
-        'confluence': Confluence(product, url, region, get_public_ssh_key()).parameters(),
-        'bitbucket': Bitbucket(product, url, region, get_public_ssh_key()).parameters()
+        'jira': Jira(product, nested_template_url, region, get_public_ssh_key()).parameters(),
+        'crowd': Crowd(product, nested_template_url, region, get_public_ssh_key()).parameters(),
+        'confluence': Confluence(product, nested_template_url, region, get_public_ssh_key()).parameters(),
+        'bitbucket': Bitbucket(product, nested_template_url, region, get_public_ssh_key()).parameters()
     }
     return parameters.get(product)
