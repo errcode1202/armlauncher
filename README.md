@@ -10,7 +10,7 @@ A Python based CLI tool for simplifying local deployments of [Atlassian Azure AR
 * `Azure CLI`
 
 ## Installation
-Login to you Azure account:
+Azure account login:
 ```
 az login
 ```
