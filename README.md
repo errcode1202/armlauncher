@@ -1,8 +1,8 @@
-# ARMlauncher
+# ARM-Launcher
 A Python based CLI tool for simplifying local deployments of [Atlassian Azure ARM templates](https://bitbucket.org/atlassian/atlassian-azure-deployment/src/master/).
 
 ## Prerequisites
-> **NOTE:** Its assumed that this code will be cloned to and reside under the `./scripts` folder of the [Atlassian Azure ARM templates repo](https://bitbucket.org/atlassian/atlassian-azure-deployment/src/master/) i.e. `/atlassian-azure-deployment/src/master/scripts/`
+> **NOTE:** There are some location based assumptions baked into the ARM-Launcher. For it to function correctly it must be cloned to the `./scripts` folder of the [Atlassian Azure ARM templates repo](https://bitbucket.org/atlassian/atlassian-azure-deployment/src/master/) i.e. `/atlassian-azure-deployment/src/master/scripts/`
 
 * `Python 3`
 * `pip`
