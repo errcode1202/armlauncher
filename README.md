@@ -48,4 +48,4 @@ parameters = {
     'enableAnalytics': False
 }
 ```
-> See [Deployment customizations](https://bitbucket.org/atlassian/atlassian-azure-deployment/src/master/HOWTO.md) for more details on how the parameters for each product can be configured. 
+> See [Deployment customizations](https://bitbucket.org/atlassian/atlassian-azure-deployment/src/master/HOWTO.md) for further details on how the parameters for each product can be configured. 
