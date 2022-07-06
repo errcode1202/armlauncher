@@ -29,6 +29,7 @@ pip install -r requirements.txt
 
 ## Run
 ```
+cd scripts/armlauncher;
 python main.py
 ```
 
